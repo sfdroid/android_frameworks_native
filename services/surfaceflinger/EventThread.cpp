@@ -47,7 +47,7 @@ static void vsyncOffCallback(union sigval val) {
 
 EventThread::EventThread(const sp<VSyncSource>& src)
     : mVSyncSource(src),
-      mUseSoftwareVSync(false),
+      mUseSoftwareVSync(true),
       mVsyncEnabled(false),
       mDebugVsyncEnabled(false),
       mVsyncHintSent(false) {
@@ -142,7 +142,7 @@ void EventThread::onScreenAcquired() {
     Mutex::Autolock _l(mLock);
     if (mUseSoftwareVSync) {
         // resume use of h/w vsync
-        mUseSoftwareVSync = false;
+        mUseSoftwareVSync = true;
         mCondition.broadcast();
     }
 }
