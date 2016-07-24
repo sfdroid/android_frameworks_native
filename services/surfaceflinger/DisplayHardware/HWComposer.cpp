@@ -953,6 +953,20 @@ int HWComposer::fbPost(int32_t id,
     }
 }
 
+int HWComposer::isConnected()
+{
+    return mFbDev->is_connected(mFbDev);
+}
+
+void HWComposer::setLayerName(const char *name) {
+    mFbDev->set_layer_name(mFbDev, name);
+}
+
+void HWComposer::closeLayer(const char *name)
+{
+    mFbDev->close_layer(mFbDev, name);
+}
+
 int HWComposer::fbCompositionComplete() {
     if (mHwc && hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1))
         return NO_ERROR;
