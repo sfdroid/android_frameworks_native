@@ -328,6 +328,8 @@ private:
             uint32_t w, uint32_t h, uint32_t flags, sp<IBinder>* outHandle,
             sp<IGraphicBufferProducer>* outGbp, sp<Layer>* outLayer);
 
+    status_t onClientDestroyed(const wp<Layer>& layer);
+
     // called in response to the window-manager calling
     // ISurfaceComposerClient::destroySurface()
     status_t onLayerRemoved(const sp<Client>& client, const sp<IBinder>& handle);
