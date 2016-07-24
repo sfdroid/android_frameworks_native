@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-//#define LOG_NDEBUG 0
+#define LOG_NDEBUG 0
 #define ATRACE_TAG ATRACE_TAG_GRAPHICS
 
 #include <stdint.h>
@@ -2362,13 +2362,33 @@ bool SurfaceFlinger::doComposeSurfaces(const sp<const DisplayDevice>& hw, const 
         }
 #endif
     } else {
+        bool layer_name_set = false;
         // we're not using h/w composer
         for (size_t i=0 ; i<count ; ++i) {
+            if(!layer_name_set) {
+                const Layer::State& state(layers[i]->getDrawingState());
+                if((layers[i]->getName().contains(".") && !layers[i]->isOpaque(state)) || layers[i]->getName().contains("BootAnimation"))
+                {
+                    if(getHwComposer().isConnected()) {
+                        getHwComposer().setLayerName(layers[i]->getName().string());
+                    }
+
+                    layer_name_set = true;
+                }
+            }
+
             const sp<Layer>& layer(layers[i]);
             const Region clip(dirty.intersect(
                     tr.transform(layer->visibleRegion)));
             if (!clip.isEmpty()) {
                 layer->draw(hw, clip);
+            }
+        }
+
+        if(!layer_name_set && count)
+        {
+            if(getHwComposer().isConnected()) {
+                getHwComposer().setLayerName(layers[0]->getName().string());
             }
         }
     }
@@ -2774,11 +2794,25 @@ status_t SurfaceFlinger::onLayerRemoved(const sp<Client>& client, const sp<IBind
     status_t err = NO_ERROR;
     sp<Layer> l(client->getLayerUser(handle));
     if (l != NULL) {
+
+//        getHwComposer().closeLayer(l->getName().string());
+
         err = removeLayer(l);
         ALOGE_IF(err<0 && err != NAME_NOT_FOUND,
                 "error removing layer=%p (%s)", l.get(), strerror(-err));
     }
     return err;
+}
+
+status_t SurfaceFlinger::onClientDestroyed(const wp<Layer>& layer)
+{
+    sp<Layer> l(layer.promote());
+    if(l != NULL)
+    {
+        getHwComposer().closeLayer(l->getName().string());
+        return 0;
+    }
+    else return 1;
 }
 
 status_t SurfaceFlinger::onLayerDestroyed(const wp<Layer>& layer)
@@ -2788,6 +2822,9 @@ status_t SurfaceFlinger::onLayerDestroyed(const wp<Layer>& layer)
     status_t err = NO_ERROR;
     sp<Layer> l(layer.promote());
     if (l != NULL) {
+
+//        getHwComposer().closeLayer(l->getName().string());
+
         err = removeLayer(l);
         ALOGE_IF(err<0 && err != NAME_NOT_FOUND,
                 "error removing layer=%p (%s)", l.get(), strerror(-err));

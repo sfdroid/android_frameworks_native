@@ -144,6 +144,9 @@ public:
     // *ALL* displays.
     int getVisualID() const;
 
+    int isConnected();
+    void setLayerName(const char *name);
+    void closeLayer(const char *name);
     // Forwarding to FB HAL for pre-HWC-1.1 code (see FramebufferSurface).
     int fbPost(int32_t id, const sp<Fence>& acquireFence, const sp<GraphicBuffer>& buf);
     int fbCompositionComplete();
