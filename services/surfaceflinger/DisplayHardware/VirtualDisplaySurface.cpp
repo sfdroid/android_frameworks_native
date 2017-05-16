@@ -60,7 +60,7 @@ VirtualDisplaySurface::VirtualDisplaySurface(HWComposer& hwc, int32_t dispId,
     mSource{},
     mDefaultOutputFormat(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED),
     mOutputFormat(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED),
-    mOutputUsage(GRALLOC_USAGE_HW_COMPOSER),
+    mOutputUsage(GRALLOC_USAGE_HW_RENDER),
     mProducerSlotSource(0),
     mProducerBuffers(),
     mQueueBufferOutput(),
@@ -103,7 +103,7 @@ VirtualDisplaySurface::VirtualDisplaySurface(HWComposer& hwc, int32_t dispId,
 
     ConsumerBase::mName = String8::format("VDS: %s", mDisplayName.string());
     mConsumer->setConsumerName(ConsumerBase::mName);
-    mConsumer->setConsumerUsageBits(GRALLOC_USAGE_HW_COMPOSER);
+    mConsumer->setConsumerUsageBits(GRALLOC_USAGE_HW_RENDER);
     mConsumer->setDefaultBufferSize(sinkWidth, sinkHeight);
     sink->setAsyncMode(true);
     IGraphicBufferProducer::QueueBufferOutput output;
@@ -156,7 +156,7 @@ status_t VirtualDisplaySurface::prepareFrame(CompositionType compositionType) {
 
     if (mCompositionType != COMPOSITION_GLES &&
             (mOutputFormat != mDefaultOutputFormat ||
-             mOutputUsage != GRALLOC_USAGE_HW_COMPOSER)) {
+             mOutputUsage != GRALLOC_USAGE_HW_RENDER)) {
         // We must have just switched from GLES-only to MIXED or HWC
         // composition. Stop using the format and usage requested by the GLES
         // driver; they may be suboptimal when HWC is writing to the output
@@ -168,7 +168,7 @@ status_t VirtualDisplaySurface::prepareFrame(CompositionType compositionType) {
         // format/usage and get a new buffer when the GLES driver calls
         // dequeueBuffer().
         mOutputFormat = mDefaultOutputFormat;
-        mOutputUsage = GRALLOC_USAGE_HW_COMPOSER;
+        mOutputUsage = GRALLOC_USAGE_HW_RENDER;
         refreshOutputBuffer();
     }
 
@@ -415,7 +415,7 @@ status_t VirtualDisplaySurface::dequeueBuffer(int* pslot, sp<Fence>* fence,
         // prepare and set, but since we're in GLES-only mode already it
         // shouldn't matter.
 
-        usage |= GRALLOC_USAGE_HW_COMPOSER;
+        usage |= GRALLOC_USAGE_HW_RENDER;
         const sp<GraphicBuffer>& buf = mProducerBuffers[mOutputProducerSlot];
         if ((usage & ~buf->getUsage()) != 0 ||
                 (format != 0 && format != buf->getPixelFormat()) ||

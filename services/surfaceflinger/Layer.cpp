@@ -2163,7 +2163,7 @@ uint32_t Layer::getEffectiveUsage(uint32_t usage) const
     if (mPotentialCursor) {
         usage |= GraphicBuffer::USAGE_CURSOR;
     }
-    usage |= GraphicBuffer::USAGE_HW_COMPOSER;
+    usage |= GraphicBuffer::USAGE_HW_RENDER;
     return usage;
 }
 

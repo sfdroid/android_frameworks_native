@@ -1,6 +1,8 @@
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
+$(shell $(LOCAL_PATH)/generate-protocol.sh $(LOCAL_PATH))
+
 LOCAL_CLANG := true
 
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
@@ -40,7 +42,9 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := \
 	frameworks/native/vulkan/include \
-	external/vulkan-validation-layers/libs/vkjson
+	external/vulkan-validation-layers/libs/vkjson \
+	external/wayland/src \
+	external/wayland/protocol
 
 LOCAL_CFLAGS := -DLOG_TAG=\"SurfaceFlinger\"
 LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES -DEGL_EGLEXT_PROTOTYPES
@@ -53,7 +57,10 @@ ifeq ($(TARGET_USES_HWC2),true)
 else
     LOCAL_SRC_FILES += \
         SurfaceFlinger_hwc1.cpp \
-        DisplayHardware/HWComposer_hwc1.cpp
+        DisplayHardware/HWComposer_hwc1.cpp \
+        DisplayHardware/WaylandWindowManager.cpp \
+        DisplayHardware/WaylandSingleWindowManager.cpp \
+        DisplayHardware/wayland-android-client-protocol.c
 endif
 
 ifeq ($(TARGET_BOARD_PLATFORM),omap4)
@@ -124,7 +131,7 @@ else
 endif
 
 LOCAL_CFLAGS += -fvisibility=hidden -Werror=format
-LOCAL_CFLAGS += -std=c++14
+LOCAL_CPPFLAGS += -std=c++14
 
 LOCAL_STATIC_LIBRARIES := libvkjson
 LOCAL_SHARED_LIBRARIES := \
@@ -140,11 +147,12 @@ LOCAL_SHARED_LIBRARIES := \
     libui \
     libgui \
     libpowermanager \
-    libvulkan
+    libvulkan \
+    libwayland-client
 
 LOCAL_MODULE := libsurfaceflinger
 
-LOCAL_CFLAGS += -Wall -Werror -Wunused -Wunreachable-code
+LOCAL_CFLAGS += -Wall -Wunused -Wunreachable-code
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -183,11 +191,15 @@ LOCAL_WHOLE_STATIC_LIBRARIES := libsigchain
 
 LOCAL_MODULE := surfaceflinger
 
+LOCAL_C_INCLUDES += \
+    external/wayland/src \
+    external/wayland/protocol
+
 ifdef TARGET_32_BIT_SURFACEFLINGER
 LOCAL_32_BIT_ONLY := true
 endif
 
-LOCAL_CFLAGS += -Wall -Werror -Wunused -Wunreachable-code
+LOCAL_CFLAGS += -Wall -Wunused -Wunreachable-code
 
 include $(BUILD_EXECUTABLE)
 
@@ -211,7 +223,7 @@ LOCAL_SHARED_LIBRARIES := \
 
 LOCAL_MODULE := libsurfaceflinger_ddmconnection
 
-LOCAL_CFLAGS += -Wall -Werror -Wunused -Wunreachable-code
+LOCAL_CFLAGS += -Wall -Wunused -Wunreachable-code
 
 include $(BUILD_SHARED_LIBRARY)
 endif # libnativehelper

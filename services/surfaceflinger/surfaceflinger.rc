@@ -1,4 +1,6 @@
 service surfaceflinger /system/bin/surfaceflinger
+    setenv XDG_RUNTIME_DIR /run/
+    setenv WAYLAND_DISPLAY display/wayland-0
     class core
     user system
     group graphics drmrpc readproc

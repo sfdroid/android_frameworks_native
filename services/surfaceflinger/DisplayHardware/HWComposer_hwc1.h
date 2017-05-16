@@ -44,6 +44,9 @@ struct hwc_layer_1;
 struct hwc_procs;
 struct framebuffer_device_t;
 
+#include "WaylandWindowManager.h"
+#include "WaylandSingleWindowManager.h"
+
 namespace android {
 // ---------------------------------------------------------------------------
 
@@ -317,6 +320,8 @@ public:
 private:
     void loadHwcModule();
     int loadFbHalModule();
+
+    WaylandWindowManager *wl_window_manager;
 
     LayerListIterator getLayerIterator(int32_t id, size_t index);
 

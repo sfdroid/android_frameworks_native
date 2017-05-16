@@ -44,6 +44,8 @@
 
 #include <system/graphics.h>
 
+#include "WaylandWindowManager.h"
+
 #include "HWComposer.h"
 
 #include "../Layer.h"           // needed only for debugging
@@ -90,8 +92,12 @@ HWComposer::HWComposer(
       mFbDev(0), mHwc(0), mNumDisplays(1),
       mCBContext(new cb_context),
       mEventHandler(handler),
-      mDebugForceFakeVSync(false)
+      mDebugForceFakeVSync(false),
+      wl_window_manager(NULL)
 {
+    wl_window_manager = new WaylandSingleWindowManager();
+    wl_window_manager->initialize();
+
     for (size_t i =0 ; i<MAX_HWC_DISPLAYS ; i++) {
         mLists[i] = 0;
     }
@@ -108,9 +114,12 @@ HWComposer::HWComposer(
     bool needVSyncThread = true;
 
     // Note: some devices may insist that the FB HAL be opened before HWC.
+#if 0
     int fberr = loadFbHalModule();
+#endif
     loadHwcModule();
 
+#if 0
     if (mFbDev && mHwc && hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1)) {
         // close FB HAL if we don't needed it.
         // FIXME: this is temporary until we're not forced to open FB HAL
@@ -126,6 +135,7 @@ HWComposer::HWComposer(
                 strerror(-fberr));
         abort();
     }
+#endif
 
     // these display IDs are always reserved
     for (size_t i=0 ; i<NUM_BUILTIN_DISPLAYS ; i++) {
@@ -195,6 +205,8 @@ HWComposer::HWComposer(
 }
 
 HWComposer::~HWComposer() {
+    wl_window_manager->finalize();
+
     if (mHwc) {
         eventControl(HWC_DISPLAY_PRIMARY, HWC_EVENT_VSYNC, 0);
     }
@@ -585,10 +597,12 @@ status_t HWComposer::createWorkList(int32_t id, size_t numLayers) {
 
     if (mHwc) {
         DisplayData& disp(mDisplayData[id]);
+#if 0
         if (hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1)) {
             // we need space for the HWC_FRAMEBUFFER_TARGET
             numLayers++;
         }
+#endif
         if (disp.capacity < numLayers || disp.list == NULL) {
             size_t size = sizeof(hwc_display_contents_1_t)
                     + numLayers * sizeof(hwc_layer_1_t);
@@ -596,6 +610,7 @@ status_t HWComposer::createWorkList(int32_t id, size_t numLayers) {
             disp.list = (hwc_display_contents_1_t*)malloc(size);
             disp.capacity = numLayers;
         }
+#if 0
         if (hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1)) {
             disp.framebufferTarget = &disp.list->hwLayers[numLayers - 1];
             memset(disp.framebufferTarget, 0, sizeof(hwc_layer_1_t));
@@ -627,6 +642,7 @@ status_t HWComposer::createWorkList(int32_t id, size_t numLayers) {
             disp.framebufferTarget->releaseFenceFd = -1;
             disp.framebufferTarget->planeAlpha = 0xFF;
         }
+#endif
         disp.list->retireFenceFd = -1;
         disp.list->flags = HWC_GEOMETRY_CHANGED;
         disp.list->numHwLayers = numLayers;
@@ -678,6 +694,7 @@ status_t HWComposer::prepare() {
         }
         mLists[i] = disp.list;
         if (mLists[i]) {
+#if 0
             if (hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_3)) {
                 mLists[i]->outbuf = disp.outbufHandle;
                 mLists[i]->outbufAcquireFenceFd = -1;
@@ -686,9 +703,12 @@ status_t HWComposer::prepare() {
                 mLists[i]->dpy = (hwc_display_t)0xDEADBEEF;
                 mLists[i]->sur = (hwc_surface_t)0xDEADBEEF;
             } else {
+#endif
                 mLists[i]->dpy = EGL_NO_DISPLAY;
                 mLists[i]->sur = EGL_NO_SURFACE;
+#if 0
             }
+#endif
         }
     }
 
@@ -755,6 +775,7 @@ sp<Fence> HWComposer::getAndResetReleaseFence(int32_t id) {
         return Fence::NO_FENCE;
 
     int fd = INVALID_OPERATION;
+#if 0
     if (mHwc && hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1)) {
         const DisplayData& disp(mDisplayData[id]);
         if (disp.framebufferTarget) {
@@ -763,19 +784,24 @@ sp<Fence> HWComposer::getAndResetReleaseFence(int32_t id) {
             disp.framebufferTarget->releaseFenceFd = -1;
         }
     }
+#endif
     return fd >= 0 ? new Fence(fd) : Fence::NO_FENCE;
 }
 
 status_t HWComposer::commit() {
     int err = NO_ERROR;
     if (mHwc) {
+#if 0
         if (!hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1)) {
+#endif
             // On version 1.0, the OpenGL ES target surface is communicated
             // by the (dpy, sur) fields and we are guaranteed to have only
             // a single display.
             mLists[0]->dpy = eglGetCurrentDisplay();
             mLists[0]->sur = eglGetCurrentSurface(EGL_DRAW);
+#if 0
         }
+#endif
 
         for (size_t i=VIRTUAL_DISPLAY_ID_BASE; i<mNumDisplays; i++) {
             DisplayData& disp(mDisplayData[i]);
@@ -849,40 +875,82 @@ void HWComposer::disconnectDisplay(int disp) {
 }
 
 int HWComposer::getVisualID() const {
+#if 0
     if (mHwc && hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1)) {
+#endif
         // FIXME: temporary hack until HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
         // is supported by the implementation. we can only be in this case
         // if we have HWC 1.1
         return HAL_PIXEL_FORMAT_RGBA_8888;
         //return HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED;
+#if 0
     } else {
         return mFbDev->format;
     }
+#endif
 }
 
 bool HWComposer::supportsFramebufferTarget() const {
+#if 0
     return (mHwc && hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1));
+#else
+    return false;
+#endif
 }
 
 int HWComposer::fbPost(int32_t id,
         const sp<Fence>& acquireFence, const sp<GraphicBuffer>& buffer) {
+
+    const Vector< sp<Layer> >& visibleLayersSortedByZ =
+            mFlinger->getLayerSortedByZForHwcDisplay(0);
+
+    std::vector<std::string> layer_names;
+
+    DisplayData& disp(mDisplayData[HWC_DISPLAY_PRIMARY]);
+
+    for (size_t i=0 ; i<disp.list->numHwLayers ; i++) {
+        const hwc_layer_1_t&l = disp.list->hwLayers[i];
+        int32_t format = -1;
+        String8 name("unknown");
+
+        if (i < visibleLayersSortedByZ.size()) {
+            const sp<Layer>& layer(visibleLayersSortedByZ[i]);
+            const sp<GraphicBuffer>& buffer(
+                    layer->getActiveBuffer());
+            if (buffer != NULL) {
+                format = buffer->getPixelFormat();
+            }
+
+            layer_names.push_back((std::string)layer->getName());
+        }
+    }
+
+    wl_window_manager->pushFrame(layer_names, buffer->handle, buffer->width, buffer->height, buffer->stride, buffer->format);
+
+#if 0
     if (mHwc && hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1)) {
         return setFramebufferTarget(id, acquireFence, buffer);
     } else {
         acquireFence->waitForever("HWComposer::fbPost");
         return mFbDev->post(mFbDev, buffer->handle);
     }
+#endif
+    return 0;
 }
 
 int HWComposer::fbCompositionComplete() {
     if (mHwc && hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1))
         return NO_ERROR;
 
+#if 0
     if (mFbDev->compositionComplete) {
         return mFbDev->compositionComplete(mFbDev);
     } else {
+#endif
         return INVALID_OPERATION;
+#if 0
     }
+#endif
 }
 
 void HWComposer::fbDump(String8& result) {
@@ -1143,6 +1211,7 @@ HWComposer::LayerListIterator HWComposer::end(int32_t id) {
         const DisplayData& disp(mDisplayData[id]);
         if (mHwc && disp.list) {
             numLayers = disp.list->numHwLayers;
+#if 0
             if (hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_1)) {
                 // with HWC 1.1, the last layer is always the HWC_FRAMEBUFFER_TARGET,
                 // which we ignore when iterating through the layer list.
@@ -1151,6 +1220,7 @@ HWComposer::LayerListIterator HWComposer::end(int32_t id) {
                     numLayers--;
                 }
             }
+#endif
         }
     }
     return getLayerIterator(id, numLayers);
